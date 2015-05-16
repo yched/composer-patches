@@ -94,11 +94,20 @@ class Patches implements PluginInterface, EventSubscriberInterface {
         $tmp_patches = array_merge_recursive($tmp_patches, $patches);
       }
 
+      // Remove packages for which the patch set has changed.
       foreach ($packages as $package) {
-        if (!($package instanceof AliasPackage) && array_key_exists($package->getName(), $tmp_patches) && !empty($tmp_patches[$package->getName()])) {
-          $uninstallOperation = new UninstallOperation($package, 'Removing package so it can be re-installed and re-patched.');
-          $this->io->write('<info>Removing package ' . $package->getName() . ' so that it can be re-installed and re-patched.</info>');
-          $installationManager->uninstall($localRepository, $uninstallOperation);
+        if (!($package instanceof AliasPackage)) {
+          $package_name = $package->getName();
+          $extra = $package->getExtra();
+          $has_patches = isset($tmp_patches[$package_name]);
+          $has_applied_patches = isset($extra['patches_applied']);
+          if (($has_patches && !$has_applied_patches)
+            || (!$has_patches && $has_applied_patches)
+            || ($has_patches && $has_applied_patches && $tmp_patches[$package_name] !== $extra['patches_applied'])) {
+            $uninstallOperation = new UninstallOperation($package, 'Removing package so it can be re-installed and re-patched.');
+            $this->io->write('<info>Removing package ' . $package_name . ' so that it can be re-installed and re-patched.</info>');
+            $installationManager->uninstall($localRepository, $uninstallOperation);
+          }
         }
       }
     }
@@ -180,18 +189,26 @@ class Patches implements PluginInterface, EventSubscriberInterface {
     // Set up a downloader.
     $downloader = new RemoteFilesystem($this->io, $this->composer->getConfig());
 
+    // Track applied patches in the package info in installed.json
+    $localRepository = $this->composer->getRepositoryManager()->getLocalRepository();
+    $localPackage = $localRepository->findPackage($package_name, $package->getVersion());
+    $extra = $localPackage->getExtra();
+    $extra['patches_applied'] = [];
+
     $this->io->write('  - Applying patches for <info>' . $package_name . '</info>');
     foreach ($this->patches[$package_name] as $description => $url) {
       $this->io->write('    <info>' . $url . '</info> (<comment>' . $description. '</comment>)');
       try {
         $this->getAndApplyPatch($downloader, $install_path, $url);
+        $extra['patches_applied'][$description] = $url;
       }
       catch (Exception $e) {
         $this->io->write('   <error>Could not apply patch! Skipping.</error>');
       }
     }
-    $this->io->write('');
+    $localPackage->setExtra($extra);
 
+    $this->io->write('');
     $this->writePatchReport($this->patches[$package_name], $install_path);
   }
 
