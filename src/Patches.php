@@ -169,18 +169,17 @@ class Patches implements PluginInterface, EventSubscriberInterface {
   public function postInstall(PackageEvent $event) {
     // Get the package object for the current operation.
     $operation = $event->getOperation();
+    /** @var PackageInterface $package */
     $package = $this->getPackageFromOperation($operation);
-
-    /**
-     * @var PackageInterface $package
-     */
     $package_name = $package->getName();
+
     if (!isset($this->patches[$package_name])) {
       if ($this->io->isVerbose()) {
         $this->io->write('<info>No patches found for ' . $package_name . '.</info>');
       }
       return;
     }
+    $this->io->write('  - Applying patches for <info>' . $package_name . '</info>');
 
     // Get the install path from the package object.
     $manager = $event->getComposer()->getInstallationManager();
@@ -195,7 +194,6 @@ class Patches implements PluginInterface, EventSubscriberInterface {
     $extra = $localPackage->getExtra();
     $extra['patches_applied'] = [];
 
-    $this->io->write('  - Applying patches for <info>' . $package_name . '</info>');
     foreach ($this->patches[$package_name] as $description => $url) {
       $this->io->write('    <info>' . $url . '</info> (<comment>' . $description. '</comment>)');
       try {
