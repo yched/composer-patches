@@ -164,7 +164,7 @@ class Patches implements PluginInterface, EventSubscriberInterface {
 
   /**
    * @param PackageEvent $event
-   * @throws Exception
+   * @throws \Exception
    */
   public function postInstall(PackageEvent $event) {
     // Get the package object for the current operation.
@@ -200,7 +200,7 @@ class Patches implements PluginInterface, EventSubscriberInterface {
         $this->getAndApplyPatch($downloader, $install_path, $url);
         $extra['patches_applied'][$description] = $url;
       }
-      catch (Exception $e) {
+      catch (\Exception $e) {
         $this->io->write('   <error>Could not apply patch! Skipping.</error>');
       }
     }
@@ -215,7 +215,7 @@ class Patches implements PluginInterface, EventSubscriberInterface {
    *
    * @param OperationInterface $operation
    * @return PackageInterface
-   * @throws Exception
+   * @throws \Exception
    */
   protected function getPackageFromOperation(OperationInterface $operation) {
     if ($operation instanceof InstallOperation) {
@@ -225,7 +225,7 @@ class Patches implements PluginInterface, EventSubscriberInterface {
       $package = $operation->getTargetPackage();
     }
     else {
-      throw new Exception('Unknown operation: ' . get_class($operation));
+      throw new \Exception('Unknown operation: ' . get_class($operation));
     }
 
     return $package;
